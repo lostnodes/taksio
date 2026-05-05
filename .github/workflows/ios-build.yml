@@ -17,11 +17,14 @@ jobs:
       - name: Node.js kur
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Bağımlılıkları yükle
         run: npm ci
+
+      - name: iOS platform ekle
+        run: npx cap add ios
 
       - name: Capacitor sync
         run: npx cap sync ios
@@ -54,7 +57,7 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
-      - name: IPA oluştur (Archive)
+      - name: IPA oluştur
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace \
             -scheme App \
@@ -68,7 +71,7 @@ jobs:
 
       - name: IPA export et
         run: |
-          cat > $RUNNER_TEMP/ExportOptions.plist << EOF
+          cat > $RUNNER_TEMP/ExportOptions.plist << PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
@@ -77,14 +80,14 @@ jobs:
             <key>uploadBitcode</key><false/>
             <key>uploadSymbols</key><true/>
           </dict></plist>
-          EOF
+          PLIST
 
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/Taksio.xcarchive \
             -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
             -exportPath $RUNNER_TEMP/export
 
-      - name: IPA'yı artifact olarak kaydet
+      - name: IPA artifact kaydet
         uses: actions/upload-artifact@v4
         with:
           name: Taksio-${{ github.sha }}.ipa
@@ -93,4 +96,7 @@ jobs:
 
       - name: Keychain temizle
         if: always()
-        run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
+        run: |
+          if security list-keychains | grep -q "app-signing"; then
+            security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
+          fi
