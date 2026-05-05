@@ -57,63 +57,58 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
-      - name: App.xcodeproj signing ayarla
+      - name: Xcodeproj signing düzelt
         env:
           TEAM_ID: ${{ secrets.TEAM_ID }}
           PROFILE_NAME: ${{ secrets.PROVISIONING_PROFILE_NAME }}
         run: |
-          python3 << 'PYEOF'
-          import os, re
+          # Gerçek dosya yolunu bul
+          PBXPROJ=$(find ios -name "project.pbxproj" | grep "App.xcodeproj" | grep -v Pods | head -1)
+          echo "Bulunan dosya: $PBXPROJ"
+          cat $PBXPROJ | grep -i "CODE_SIGN_STYLE\|PROVISIONING_PROFILE\|CODE_SIGN_IDENTITY" | head -20
 
-          team = os.environ['TEAM_ID']
-          profile = os.environ['PROFILE_NAME']
+          python3 - "$PBXPROJ" "$TEAM_ID" "$PROFILE_NAME" << 'PYEOF'
+          import sys, re
 
-          # Sadece Ana App projesini düzenle (Pods'a dokunma)
-          path = "ios/App/App/App.xcodeproj/project.pbxproj"
-          if not os.path.exists(path):
-              path = "ios/App/App.xcodeproj/project.pbxproj"
+          path, team, profile = sys.argv[1], sys.argv[2], sys.argv[3]
 
           with open(path, "r") as f:
               content = f.read()
 
-          # CODE_SIGN_STYLE = Automatic → Manual
-          content = content.replace(
-              'CODE_SIGN_STYLE = Automatic;',
-              'CODE_SIGN_STYLE = Manual;'
-          )
+          # Automatic -> Manual
+          content = content.replace('CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;')
 
-          # DEVELOPMENT_TEAM ekle/güncelle
-          content = re.sub(
-              r'DEVELOPMENT_TEAM = [^;]*;',
-              f'DEVELOPMENT_TEAM = {team};',
-              content
-          )
+          # DEVELOPMENT_TEAM
+          if 'DEVELOPMENT_TEAM' in content:
+              content = re.sub(r'DEVELOPMENT_TEAM = [A-Z0-9]*;', f'DEVELOPMENT_TEAM = {team};', content)
+          else:
+              content = content.replace('CODE_SIGN_STYLE = Manual;',
+                  f'CODE_SIGN_STYLE = Manual;\n\t\t\t\tDEVELOPMENT_TEAM = {team};')
 
-          # PROVISIONING_PROFILE_SPECIFIER ekle
-          content = re.sub(
-              r'PROVISIONING_PROFILE_SPECIFIER = [^;]*;',
-              f'PROVISIONING_PROFILE_SPECIFIER = "{profile}";',
-              content
-          )
+          # PROVISIONING_PROFILE_SPECIFIER
+          if 'PROVISIONING_PROFILE_SPECIFIER' in content:
+              content = re.sub(r'PROVISIONING_PROFILE_SPECIFIER = [^;]*;',
+                  f'PROVISIONING_PROFILE_SPECIFIER = "{profile}";', content)
+          else:
+              content = content.replace('CODE_SIGN_STYLE = Manual;',
+                  f'CODE_SIGN_STYLE = Manual;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{profile}";')
 
-          # Eğer PROVISIONING_PROFILE_SPECIFIER yoksa CODE_SIGN_STYLE'dan sonra ekle
-          if 'PROVISIONING_PROFILE_SPECIFIER' not in content:
-              content = content.replace(
-                  'CODE_SIGN_STYLE = Manual;',
-                  f'CODE_SIGN_STYLE = Manual;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{profile}";'
-              )
+          # CODE_SIGN_IDENTITY
+          content = re.sub(r'"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "[^"]*";',
+              '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";', content)
 
-          # CODE_SIGN_IDENTITY güncelle
-          content = re.sub(
-              r'"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = [^;]*;',
-              '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";',
-              content
-          )
+          if '"CODE_SIGN_IDENTITY[sdk=iphoneos*]"' not in content:
+              content = content.replace('CODE_SIGN_STYLE = Manual;',
+                  'CODE_SIGN_STYLE = Manual;\n\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";')
 
           with open(path, "w") as f:
               f.write(content)
 
-          print(f"App.xcodeproj guncellendi: team={team}, profile={profile}")
+          print("Signing ayarlari guncellendi")
+          print("Kontrol:")
+          for line in content.split('\n'):
+              if any(k in line for k in ['CODE_SIGN_STYLE','PROVISIONING_PROFILE_SPECIFIER','CODE_SIGN_IDENTITY','DEVELOPMENT_TEAM']):
+                  print(" ", line.strip())
           PYEOF
 
       - name: IPA oluştur
@@ -123,7 +118,6 @@ jobs:
             -configuration Release \
             -archivePath $RUNNER_TEMP/Taksio.xcarchive \
             -destination "generic/platform=iOS" \
-            DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
             archive
 
       - name: IPA export et
