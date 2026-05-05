@@ -1,0 +1,21 @@
+{
+  "name": "taksio",
+  "version": "1.0.0",
+  "description": "Taksio — Ödeme Planı Hesaplayıcı",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'No build step needed'",
+    "sync": "npx cap sync",
+    "open:ios": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "appId": "app.taksio.ios",
+  "appName": "Taksio",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "ios": {
+    "contentInset": "always",
+    "allowsLinkPreview": false,
+    "scrollEnabled": true,
+    "backgroundColor": "#0E0F14",
+    "limitsNavigationsToAppBoundDomains": true
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0E0F14"
+    },
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#0E0F14",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  }
+}
