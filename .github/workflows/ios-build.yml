@@ -57,6 +57,12 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
+      - name: Pods için code signing kapat
+        run: |
+          cd ios/App
+          sed -i '' 's/CODE_SIGN_STYLE = Manual/CODE_SIGN_STYLE = Automatic/g' Pods/Pods.xcodeproj/project.pbxproj || true
+          /usr/libexec/PlistBuddy -c "Add :targets:Pods string Automatic" Pods/Pods.xcodeproj/project.pbxproj || true
+
       - name: IPA oluştur
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace \
@@ -67,7 +73,9 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}"
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
+            -destination "generic/platform=iOS" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $RUNNER_TEMP/app-signing.keychain-db"
 
       - name: IPA export et
         run: |
@@ -79,6 +87,10 @@ jobs:
             <key>teamID</key><string>${{ secrets.TEAM_ID }}</string>
             <key>uploadBitcode</key><false/>
             <key>uploadSymbols</key><true/>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key><dict>
+              <key>app.taksio.ios</key><string>${{ secrets.PROVISIONING_PROFILE_NAME }}</string>
+            </dict>
           </dict></plist>
           PLIST
 
