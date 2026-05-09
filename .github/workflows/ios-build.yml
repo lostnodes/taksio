@@ -62,10 +62,8 @@ jobs:
           ICON_DIR="ios/App/App/Assets.xcassets/AppIcon.appiconset"
           mkdir -p "$ICON_DIR"
 
-          # 1024x1024 base64 ikonunu decode et
           echo "${{ secrets.APP_ICON_BASE64 }}" | base64 --decode > /tmp/icon_1024.png
 
-          # ImageMagick ile tüm boyutları üret
           brew install imagemagick -q || true
 
           declare -A SIZES=(
@@ -91,7 +89,6 @@ jobs:
             convert /tmp/icon_1024.png -resize "${size}x${size}" "$ICON_DIR/$filename"
           done
 
-          # Contents.json yaz
           cat > "$ICON_DIR/Contents.json" << 'JSON'
           {
             "images": [
@@ -118,7 +115,7 @@ jobs:
           }
           JSON
 
-          echo "İkonlar yerleştirildi:"
+          echo "İkonlar hazır"
           ls "$ICON_DIR"
 
       - name: Xcodeproj signing düzelt
@@ -127,42 +124,28 @@ jobs:
           PROFILE_NAME: ${{ secrets.PROVISIONING_PROFILE_NAME }}
         run: |
           PBXPROJ=$(find ios -name "project.pbxproj" | grep "App.xcodeproj" | grep -v Pods | head -1)
-          echo "Bulunan dosya: $PBXPROJ"
+          echo "Dosya: $PBXPROJ"
 
           python3 - "$PBXPROJ" "$TEAM_ID" "$PROFILE_NAME" << 'PYEOF'
           import sys, re
-
           path, team, profile = sys.argv[1], sys.argv[2], sys.argv[3]
-
           with open(path, "r") as f:
               content = f.read()
-
           content = content.replace('CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;')
-
           if 'DEVELOPMENT_TEAM' in content:
               content = re.sub(r'DEVELOPMENT_TEAM = [A-Z0-9]*;', f'DEVELOPMENT_TEAM = {team};', content)
           else:
-              content = content.replace('CODE_SIGN_STYLE = Manual;',
-                  f'CODE_SIGN_STYLE = Manual;\n\t\t\t\tDEVELOPMENT_TEAM = {team};')
-
+              content = content.replace('CODE_SIGN_STYLE = Manual;', f'CODE_SIGN_STYLE = Manual;\n\t\t\t\tDEVELOPMENT_TEAM = {team};')
           if 'PROVISIONING_PROFILE_SPECIFIER' in content:
-              content = re.sub(r'PROVISIONING_PROFILE_SPECIFIER = [^;]*;',
-                  f'PROVISIONING_PROFILE_SPECIFIER = "{profile}";', content)
+              content = re.sub(r'PROVISIONING_PROFILE_SPECIFIER = [^;]*;', f'PROVISIONING_PROFILE_SPECIFIER = "{profile}";', content)
           else:
-              content = content.replace('CODE_SIGN_STYLE = Manual;',
-                  f'CODE_SIGN_STYLE = Manual;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{profile}";')
-
-          content = re.sub(r'"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "[^"]*";',
-              '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";', content)
-
+              content = content.replace('CODE_SIGN_STYLE = Manual;', f'CODE_SIGN_STYLE = Manual;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{profile}";')
+          content = re.sub(r'"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "[^"]*";', '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";', content)
           if '"CODE_SIGN_IDENTITY[sdk=iphoneos*]"' not in content:
-              content = content.replace('CODE_SIGN_STYLE = Manual;',
-                  'CODE_SIGN_STYLE = Manual;\n\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";')
-
+              content = content.replace('CODE_SIGN_STYLE = Manual;', 'CODE_SIGN_STYLE = Manual;\n\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";')
           with open(path, "w") as f:
               f.write(content)
-
-          print("Signing ayarlari guncellendi")
+          print("Signing guncellendi")
           PYEOF
 
       - name: IPA oluştur
@@ -207,17 +190,27 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
         run: |
+          # API key dosyasını oluştur
           mkdir -p ~/.appstoreconnect/private_keys
-          echo "$ASC_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          printf '%s' "$ASC_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
 
+          # Dosya içeriğini kontrol et
+          echo "Key dosyası satır sayısı: $(wc -l < ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8)"
+          head -1 ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+
+          # IPA bul
           IPA_PATH=$(find $RUNNER_TEMP/export -name "*.ipa" | head -1)
           echo "IPA: $IPA_PATH"
 
-          xcrun altool --upload-app \
+          # xcrun notarytool yerine App Store Connect API ile yükle
+          xcrun altool \
+            --upload-app \
             --type ios \
             --file "$IPA_PATH" \
             --apiKey "$ASC_KEY_ID" \
             --apiIssuer "$ASC_ISSUER_ID" \
+            --private-key ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
             --verbose
 
       - name: Keychain temizle
