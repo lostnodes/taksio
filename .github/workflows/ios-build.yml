@@ -61,62 +61,43 @@ jobs:
         run: |
           ICON_DIR="ios/App/App/Assets.xcassets/AppIcon.appiconset"
           mkdir -p "$ICON_DIR"
-
           echo "${{ secrets.APP_ICON_BASE64 }}" | base64 --decode > /tmp/icon_1024.png
-
           brew install imagemagick -q || true
-
           declare -A SIZES=(
-            ["Icon-20.png"]=20
-            ["Icon-20@2x.png"]=40
-            ["Icon-20@3x.png"]=60
-            ["Icon-29.png"]=29
-            ["Icon-29@2x.png"]=58
-            ["Icon-29@3x.png"]=87
-            ["Icon-40.png"]=40
-            ["Icon-40@2x.png"]=80
-            ["Icon-40@3x.png"]=120
-            ["Icon-60@2x.png"]=120
-            ["Icon-60@3x.png"]=180
-            ["Icon-76.png"]=76
-            ["Icon-76@2x.png"]=152
-            ["Icon-83.5@2x.png"]=167
-            ["Icon-1024.png"]=1024
+            ["Icon-20.png"]=20 ["Icon-20@2x.png"]=40 ["Icon-20@3x.png"]=60
+            ["Icon-29.png"]=29 ["Icon-29@2x.png"]=58 ["Icon-29@3x.png"]=87
+            ["Icon-40.png"]=40 ["Icon-40@2x.png"]=80 ["Icon-40@3x.png"]=120
+            ["Icon-60@2x.png"]=120 ["Icon-60@3x.png"]=180
+            ["Icon-76.png"]=76 ["Icon-76@2x.png"]=152
+            ["Icon-83.5@2x.png"]=167 ["Icon-1024.png"]=1024
           )
-
           for filename in "${!SIZES[@]}"; do
             size="${SIZES[$filename]}"
             convert /tmp/icon_1024.png -resize "${size}x${size}" "$ICON_DIR/$filename"
           done
-
           cat > "$ICON_DIR/Contents.json" << 'JSON'
-          {
-            "images": [
-              {"size":"20x20","idiom":"iphone","scale":"2x","filename":"Icon-20@2x.png"},
-              {"size":"20x20","idiom":"iphone","scale":"3x","filename":"Icon-20@3x.png"},
-              {"size":"29x29","idiom":"iphone","scale":"2x","filename":"Icon-29@2x.png"},
-              {"size":"29x29","idiom":"iphone","scale":"3x","filename":"Icon-29@3x.png"},
-              {"size":"40x40","idiom":"iphone","scale":"2x","filename":"Icon-40@2x.png"},
-              {"size":"40x40","idiom":"iphone","scale":"3x","filename":"Icon-40@3x.png"},
-              {"size":"60x60","idiom":"iphone","scale":"2x","filename":"Icon-60@2x.png"},
-              {"size":"60x60","idiom":"iphone","scale":"3x","filename":"Icon-60@3x.png"},
-              {"size":"20x20","idiom":"ipad","scale":"1x","filename":"Icon-20.png"},
-              {"size":"20x20","idiom":"ipad","scale":"2x","filename":"Icon-20@2x.png"},
-              {"size":"29x29","idiom":"ipad","scale":"1x","filename":"Icon-29.png"},
-              {"size":"29x29","idiom":"ipad","scale":"2x","filename":"Icon-29@2x.png"},
-              {"size":"40x40","idiom":"ipad","scale":"1x","filename":"Icon-40.png"},
-              {"size":"40x40","idiom":"ipad","scale":"2x","filename":"Icon-40@2x.png"},
-              {"size":"76x76","idiom":"ipad","scale":"1x","filename":"Icon-76.png"},
-              {"size":"76x76","idiom":"ipad","scale":"2x","filename":"Icon-76@2x.png"},
-              {"size":"83.5x83.5","idiom":"ipad","scale":"2x","filename":"Icon-83.5@2x.png"},
-              {"size":"1024x1024","idiom":"ios-marketing","scale":"1x","filename":"Icon-1024.png"}
-            ],
-            "info":{"version":1,"author":"xcode"}
-          }
+          {"images":[
+            {"size":"20x20","idiom":"iphone","scale":"2x","filename":"Icon-20@2x.png"},
+            {"size":"20x20","idiom":"iphone","scale":"3x","filename":"Icon-20@3x.png"},
+            {"size":"29x29","idiom":"iphone","scale":"2x","filename":"Icon-29@2x.png"},
+            {"size":"29x29","idiom":"iphone","scale":"3x","filename":"Icon-29@3x.png"},
+            {"size":"40x40","idiom":"iphone","scale":"2x","filename":"Icon-40@2x.png"},
+            {"size":"40x40","idiom":"iphone","scale":"3x","filename":"Icon-40@3x.png"},
+            {"size":"60x60","idiom":"iphone","scale":"2x","filename":"Icon-60@2x.png"},
+            {"size":"60x60","idiom":"iphone","scale":"3x","filename":"Icon-60@3x.png"},
+            {"size":"20x20","idiom":"ipad","scale":"1x","filename":"Icon-20.png"},
+            {"size":"20x20","idiom":"ipad","scale":"2x","filename":"Icon-20@2x.png"},
+            {"size":"29x29","idiom":"ipad","scale":"1x","filename":"Icon-29.png"},
+            {"size":"29x29","idiom":"ipad","scale":"2x","filename":"Icon-29@2x.png"},
+            {"size":"40x40","idiom":"ipad","scale":"1x","filename":"Icon-40.png"},
+            {"size":"40x40","idiom":"ipad","scale":"2x","filename":"Icon-40@2x.png"},
+            {"size":"76x76","idiom":"ipad","scale":"1x","filename":"Icon-76.png"},
+            {"size":"76x76","idiom":"ipad","scale":"2x","filename":"Icon-76@2x.png"},
+            {"size":"83.5x83.5","idiom":"ipad","scale":"2x","filename":"Icon-83.5@2x.png"},
+            {"size":"1024x1024","idiom":"ios-marketing","scale":"1x","filename":"Icon-1024.png"}
+          ],"info":{"version":1,"author":"xcode"}}
           JSON
-
           echo "İkonlar hazır"
-          ls "$ICON_DIR"
 
       - name: Xcodeproj signing düzelt
         env:
@@ -124,8 +105,6 @@ jobs:
           PROFILE_NAME: ${{ secrets.PROVISIONING_PROFILE_NAME }}
         run: |
           PBXPROJ=$(find ios -name "project.pbxproj" | grep "App.xcodeproj" | grep -v Pods | head -1)
-          echo "Dosya: $PBXPROJ"
-
           python3 - "$PBXPROJ" "$TEAM_ID" "$PROFILE_NAME" << 'PYEOF'
           import sys, re
           path, team, profile = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -171,7 +150,6 @@ jobs:
             </dict>
           </dict></plist>
           PLIST
-
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/Taksio.xcarchive \
             -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
@@ -185,33 +163,12 @@ jobs:
           retention-days: 30
 
       - name: App Store Connect'e yükle
-        env:
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
-        run: |
-          # API key dosyasını oluştur
-          mkdir -p ~/.appstoreconnect/private_keys
-          printf '%s' "$ASC_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
-          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
-
-          # Dosya içeriğini kontrol et
-          echo "Key dosyası satır sayısı: $(wc -l < ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8)"
-          head -1 ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
-
-          # IPA bul
-          IPA_PATH=$(find $RUNNER_TEMP/export -name "*.ipa" | head -1)
-          echo "IPA: $IPA_PATH"
-
-          # xcrun notarytool yerine App Store Connect API ile yükle
-          xcrun altool \
-            --upload-app \
-            --type ios \
-            --file "$IPA_PATH" \
-            --apiKey "$ASC_KEY_ID" \
-            --apiIssuer "$ASC_ISSUER_ID" \
-            --private-key ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
-            --verbose
+        uses: apple-actions/upload-testflight-build@v1
+        with:
+          app-path: ${{ runner.temp }}/export/App.ipa
+          issuer-id: ${{ secrets.ASC_ISSUER_ID }}
+          api-key-id: ${{ secrets.ASC_KEY_ID }}
+          api-private-key: ${{ secrets.ASC_PRIVATE_KEY }}
 
       - name: Keychain temizle
         if: always()
